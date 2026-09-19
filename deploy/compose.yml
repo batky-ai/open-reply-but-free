@@ -1,0 +1,95 @@
+# Self-hosted stack: web, worker, scheduler, Postgres and Redis on one machine.
+#
+#   cp deploy/.env.example deploy/.env    # fill it in
+#   docker compose -f deploy/compose.yml up -d --build
+#
+# The web app listens on 127.0.0.1:3000. Put any HTTPS reverse proxy (Caddy,
+# nginx, Traefik, a Cloudflare tunnel) in front and set NEXTAUTH_URL to that URL.
+name: open-reply-but-free
+x-app: &app
+  image: open-reply-but-free:${RELEASE_TAG:-local}
+  build:
+    context: ..
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://openreply:${POSTGRES_PASSWORD}@postgres:5432/openreply
+    REDIS_URL: redis://redis:6379
+  restart: unless-stopped
+  mem_limit: 1g
+  logging: &logs
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+services:
+  # Applies pending Prisma migrations, then exits. web and worker wait for it.
+  migrate:
+    <<: *app
+    command: ["npx", "prisma", "migrate", "deploy"]
+    restart: "no"
+  web:
+    <<: *app
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+  # Always-on: sends DMs and sweeps comments every COMMENT_POLL_INTERVAL_MS.
+  worker:
+    <<: *app
+    command: ["npm", "run", "worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  # Calls the daily /api/cron routes that Vercel would otherwise schedule.
+  scheduler:
+    <<: *app
+    command: ["sh", "scripts/cron.sh"]
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      CRON_BASE_URL: http://web:3000
+    mem_limit: 128m
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: openreply
+      POSTGRES_USER: openreply
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openreply -d openreply"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logs
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # BullMQ silently loses jobs under eviction, so eviction stays off.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logs
+volumes:
+  pgdata:
+  redisdata:

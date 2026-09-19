@@ -1,29 +1,38 @@
-# open-reply-but-free — agent instructions
+# Agent instructions
 
-Self-hosted Instagram comment-to-DM (OpenReply fork) that connects Instagram through Composio: no Meta app review, no paid provider
+Self-hosted Instagram comment-to-DM (OpenReply fork, Instagram through Composio).
+Read `README.md` and `UPSTREAM.md` first. `AGENTS.md` applies: this Next.js version differs
+from training data, so check `node_modules/next/dist/docs/` before using a Next API you are
+unsure of.
 
-Read `README.md` first for what this project is. This file holds what an agent
-editing the project needs and cannot infer from the code.
+## Constraints
 
-## Stack and constraints
-
-<!-- Language/runtime versions, framework, and anything that constrains how code
-     here must be written (e.g. ES5 only, no build step, serverless timeouts). -->
-
-## Conventions
-
-<!-- Project-specific rules that differ from or sharpen ~/projects/CLAUDE.md.
-     Delete this section rather than restating the workspace defaults. -->
+- Keep upstream code shape so upstream fixes stay easy to port. Fork changes are listed in
+  `UPSTREAM.md`; keep that list current.
+- Never print or log Composio credentials, database URLs, or secrets. Credentials enter
+  `scripts/connect-composio.ts` on stdin from a private file, never as arguments.
+- Do not persist Composio response bodies on failure; they can contain credential data.
 
 ## Verification
 
-<!-- How to prove a change works. The exact commands. If there is no test
-     runner, say so and name the manual path. -->
+```bash
+npm test && npm run lint && npm run typecheck
+```
+
+A real DM needs a keyword comment from a second Instagram account. A healthy queue or
+`/api/health` is not proof of delivery; check Activity (`DmLog`).
 
 ## Gotchas
 
-<!-- Things that cost someone an hour. Each one with the reason, not just the
-     rule, so it is not "simplified" away later. -->
-
----
-Branch: `dev`. Repo: `batky-ai/open-reply-but-free`. Created 2026-09-19.
+- **On Vercel the poll route is the worker.** If DMs stop, check that the external
+  scheduler is calling `/api/cron/poll` with the bearer secret. `{skipped:true}` means a
+  previous tick still held the Redis lock.
+- **Vercel Hobby rejects crons more frequent than daily** at deploy time, which is why
+  `/api/cron/poll` is not in `vercel.json`.
+- **Do not rotate `ENCRYPTION_KEY`** without re-running `scripts/connect-composio.ts`: the
+  stored Composio credential is encrypted with it.
+- **A Composio API key reaches every connection in its project.** The connect script pins
+  the Instagram username and id for that reason; keep the pin.
+- **Redis eviction must be off.** BullMQ loses jobs silently under eviction.
+- **Vercel preview deployments share production env** unless configured otherwise, and
+  their build runs `prisma migrate deploy`. Never put a destructive migration on a branch.

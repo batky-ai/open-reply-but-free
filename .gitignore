@@ -25,3 +25,12 @@ build/
 
 # OS
 .DS_Store
+
+# OpenReply / Next.js
+/coverage
+/out/
+*.tsbuildinfo
+next-env.d.ts
+/app/generated/prisma
+.gstack/
+npm-debug.log*

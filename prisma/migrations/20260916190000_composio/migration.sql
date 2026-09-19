@@ -1,0 +1,5 @@
+ALTER TYPE "InstagramProvider" ADD VALUE 'COMPOSIO';
+CREATE TABLE "ComposioDelivery" ("id" TEXT PRIMARY KEY, "response" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
+ALTER TABLE "Automation" ADD COLUMN "activatedAt" TIMESTAMP(3);
+ALTER TABLE "Automation" ALTER COLUMN "isActive" SET DEFAULT false;
