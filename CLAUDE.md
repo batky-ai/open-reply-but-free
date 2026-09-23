@@ -36,3 +36,10 @@ A real DM needs a keyword comment from a second Instagram account. A healthy que
 - **Redis eviction must be off.** BullMQ loses jobs silently under eviction.
 - **Vercel preview deployments share production env** unless configured otherwise, and
   their build runs `prisma migrate deploy`. Never put a destructive migration on a branch.
+
+## Git
+
+Branch model: `main-only`. Repo: `batky-ai/open-reply-but-free`. `main` is the only long-lived branch:
+changes land through a PR from a `<type>/<slug>` branch, or directly with Evan's
+"push to main".
+Workflow: `~/projects/CLAUDE-reference.md` → "Git workflow".
