@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import type { AccountOption } from "@/components/account-select";
 import { InstagramConnectNotice } from "@/components/instagram-connect-notice";
+import { ComposioConnectForm } from "@/components/composio-connect-form";
 
 interface SettingsData {
   workspace: {
@@ -211,14 +212,17 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {!accounts.some((account) => account.provider === "COMPOSIO") && <div className="mt-6 pt-4 border-t border-border flex gap-3">
-          <a
-            href="/api/instagram/connect"
-            className="px-4 py-2 rounded text-sm font-medium transition-colors bg-accent text-white hover:bg-accent-hover"
-          >
-            Connect using your own Meta app
-          </a>
-        </div>}
+        {!accounts.some((account) => account.provider === "COMPOSIO") && <>
+          <ComposioConnectForm />
+          <div className="mt-4">
+            <a
+              href="/api/instagram/connect"
+              className="text-xs text-muted underline hover:text-foreground"
+            >
+              Or connect using your own Meta app
+            </a>
+          </div>
+        </>}
       </section>
 
       <section className="panel rounded p-4 sm:p-6">

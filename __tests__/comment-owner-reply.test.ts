@@ -23,10 +23,10 @@ beforeEach(() => {
     id: "campaign", name: "Flow", workspaceId: "workspace", keywords: ["flow"],
     postId: "post", matchAnyPost: false, matchAnyWord: false, wholeWordMatch: true,
     createdAt: new Date(0), activatedAt: new Date(0), publicReplyEnabled: true,
-    instagramAccount: { id: "connection", instagramId: "owner", username: "a.bbe", provider: "COMPOSIO", workspaceId: "workspace" },
+    instagramAccount: { id: "connection", instagramId: "owner", username: "creator", provider: "COMPOSIO", workspaceId: "workspace" },
   }]);
   mocks.handled.mockResolvedValue([]); mocks.event.mockResolvedValue({}); mocks.add.mockResolvedValue({});
-  mocks.comments.mockResolvedValue([comment]); mocks.author.mockResolvedValue({ id: "owner", username: "a.bbe" });
+  mocks.comments.mockResolvedValue([comment]); mocks.author.mockResolvedValue({ id: "owner", username: "creator" });
 });
 
 describe("polling owner-reply guard", () => {

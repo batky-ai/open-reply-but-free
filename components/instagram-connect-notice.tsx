@@ -46,7 +46,7 @@ export function InstagramConnectNotice() {
   if (status === "misconfigured") {
     return (
       <Notice tone="warning" title="Instagram setup is not finished yet">
-        <p>Connect your Instagram account through Composio using scripts/connect-composio.ts (see the README). Your campaigns will stay paused until you activate them.</p>
+        <p>This app has no Meta app configured. Connect your Instagram account through Composio with the form below instead. Your campaigns will stay paused until you activate them.</p>
       </Notice>
     );
   }

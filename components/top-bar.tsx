@@ -64,7 +64,7 @@ export default function TopBar({
         </p>
       ) : (
         <a
-          href="/api/instagram/connect"
+          href="/settings"
           className="shrink-0 whitespace-nowrap text-sm font-medium px-3 py-1.5 rounded bg-accent text-white hover:bg-accent-hover"
         >
           {/* Full label needs more room than a 360px header has to spare. */}
