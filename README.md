@@ -58,9 +58,10 @@ comment on your post → poll (every 5 min) → keyword match → BullMQ queue �
 with, and free accounts on GitHub, Composio, Supabase, Upstash, Resend, Vercel and
 cron-job.org. Keep a scratch note open: steps 2 to 5 each give you a value for step 6.
 
-### 1. Fork this repository
+### 1. Copy this repository
 
-Click **Fork** at the top of this page. Vercel deploys from your fork.
+Click **Use this template > Create a new repository** at the top of this page and give it a
+name. (**Fork** works too.) Vercel deploys from your copy.
 
 ### 2. Composio: new project, connect Instagram
 
@@ -106,7 +107,7 @@ only to the email you signed up to Resend with, so use that email in `ALLOWED_EM
 
 ### 6. Vercel: import and deploy
 
-1. At [vercel.com](https://vercel.com), **Add New > Project**, and import your fork.
+1. At [vercel.com](https://vercel.com), **Add New > Project**, and import your copy.
 2. Open **Environment Variables** and add every variable from [.env.example](.env.example).
    You can paste the whole filled-in file into the first field. Generate the secrets in a
    terminal:
