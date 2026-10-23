@@ -25,14 +25,17 @@ A real DM needs a keyword comment from a second Instagram account. A healthy que
 ## Gotchas
 
 - **On Vercel the poll route is the worker.** If DMs stop, check that the external
-  scheduler is calling `/api/cron/poll` with the bearer secret. `{skipped:true}` means a
-  previous tick still held the Redis lock.
+  scheduler is calling `/api/cron/poll` with the bearer secret. The route answers
+  `{started:true}` at once and runs the tick in `after()` (cron-job.org gives up after 30 s),
+  so results are in Activity and the function log, never in the response. A log line with
+  `"skipped":true` means a previous tick still held the Redis lock.
 - **Vercel Hobby rejects crons more frequent than daily** at deploy time, which is why
   `/api/cron/poll` is not in `vercel.json`.
-- **Do not rotate `ENCRYPTION_KEY`** without re-running `scripts/connect-composio.ts`: the
-  stored Composio credential is encrypted with it.
-- **A Composio API key reaches every connection in its project.** The connect script pins
-  the Instagram username and id for that reason; keep the pin.
+- **Do not rotate `ENCRYPTION_KEY`** without reconnecting Composio (Settings or
+  `scripts/connect-composio.ts`): the stored Composio credential is encrypted with it.
+- **A Composio API key reaches every connection in its project.** Settings connects in two
+  steps (check shows the username, connect saves only that account id) and the script pins
+  the username and id; keep both.
 - **Redis eviction must be off.** BullMQ loses jobs silently under eviction.
 - **Vercel preview deployments share production env** unless configured otherwise, and
   their build runs `prisma migrate deploy`. Never put a destructive migration on a branch.

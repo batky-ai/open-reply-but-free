@@ -49,14 +49,17 @@ Keep the `ca_...` id.
 
 ## 4. Hand it to the app
 
-Write both values to a private file outside the repo:
+Sign in to your deployment, open **Settings**, paste the API key and the `ca_...` id, click
+**Check connection**, and when it shows your Instagram username, **Connect @yourname**.
+
+Or from a terminal: write both values to a private file outside the repo:
 
 ```bash
 printf '{"apiKey":"%s","connectedAccountId":"%s"}\n' "$COMPOSIO_API_KEY" "ca_..." > ~/composio-ig.json
 chmod 600 ~/composio-ig.json
 ```
 
-Then continue with **Connect Instagram** in the [README](../README.md): run
+Then continue with **Connect Instagram from a terminal** in the [README](../README.md): run
 `scripts/connect-composio.ts --dry` first. It asks Instagram (through Composio) which account
 the connection belongs to and prints only the username and id. If that fails, the key or
 the connection is wrong, and nothing has been saved.
@@ -64,7 +67,7 @@ the connection is wrong, and nothing has been saved.
 ## Notes
 
 - The credential is stored encrypted with `ENCRYPTION_KEY`. Changing that key means
-  re-running `scripts/connect-composio.ts`.
+  connecting again in Settings (or re-running `scripts/connect-composio.ts`).
 - Revoking the API key or disconnecting the account in Composio stops all sends until you
   reconnect. Activity will show the failures.
 - The connect script also accepts a Composio user key with explicit project scope

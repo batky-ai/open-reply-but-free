@@ -8,7 +8,7 @@ describe("assertExpectedProfile", () => {
     expect(() => assertExpectedProfile(profile, { username: "creator", userId: "1784" })).not.toThrow();
   });
   it.each([
-    [{ username: "a.bbe", userId: "1784" }],
+    [{ username: "someone_else", userId: "1784" }],
     [{ username: "creator", userId: "9999" }],
   ])("rejects a different account: %j", (expected) => {
     expect(() => assertExpectedProfile(profile, expected)).toThrow("not the expected Instagram account");

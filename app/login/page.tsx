@@ -90,7 +90,7 @@ export default async function LoginPage({
         <DemoNotice variant="panel" />
 
         <div className="panel rounded p-8 shadow-black/40">
-          {params.error && <p role="alert" className="mb-5 rounded border border-error/20 bg-error/10 p-3 text-sm text-error">{params.error === "access" ? "This email does not have access. Use an approved email address or contact Evan." : "We could not send your sign-in link. Please try again or contact Evan."}</p>}
+          {params.error && <p role="alert" className="mb-5 rounded border border-error/20 bg-error/10 p-3 text-sm text-error">{params.error === "access" ? "This email does not have access. Use an email listed in ALLOWED_EMAILS." : "We could not send your sign-in link. Please try again, and check RESEND_API_KEY and EMAIL_FROM if it keeps failing."}</p>}
           {selectedTemplate && !checkEmail && (
             <div className="mb-5 border border-accent/20 bg-accent/10 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-accent">

@@ -13,8 +13,8 @@ means:
 - Composio's free plan (100,000 tool calls a month at the time of writing) covers a
   typical creator account many times over.
 
-Everything else can run on free tiers too: Vercel Hobby + Neon + Upstash + Resend, or one
-small server with Docker.
+Everything else can run on free tiers too: Vercel Hobby + Supabase + Upstash + Resend +
+cron-job.org, or one small server with Docker.
 
 ## What works on the Composio connection
 
@@ -47,34 +47,137 @@ comment on your post → poll (every 5 min) → keyword match → BullMQ queue �
   first, so a comment never gets two DMs, even across retries or restarts.
 - Two ways to run the worker:
   - **Vercel:** no always-on process. Each call to `/api/cron/poll` does one full worker
-    tick: sweep comments, then drain the queue for up to 240 seconds. See
-    `lib/ops/cron-poll.ts`.
+    tick: sweep comments, then drain the queue for up to 240 seconds. The route answers at
+    once and runs the tick right after, so a scheduler that waits only 30 seconds still
+    works. See `lib/ops/cron-poll.ts`.
   - **Docker:** the upstream always-on worker (`npm run worker`) plus a small scheduler.
 
 ## Deploy option A: Vercel (free tier)
 
-You need accounts on Vercel, [Neon](https://neon.tech) (Postgres),
-[Upstash](https://upstash.com) (Redis), [Resend](https://resend.com) (sign-in email) and
-[Composio](https://composio.dev).
+**You need:** an Instagram Business or Creator account, a second Instagram account to test
+with, and free accounts on GitHub, Composio, Supabase, Upstash, Resend, Vercel and
+cron-job.org. Keep a scratch note open: steps 2 to 5 each give you a value for step 6.
 
-1. Fork this repo and import it into Vercel.
-2. Create a Neon database. Put the pooled URL in `DATABASE_URL` and the direct URL in
-   `DIRECT_DATABASE_URL`.
-3. Create an Upstash Redis database. Use its TCP `rediss://` URL as `REDIS_URL` and turn
-   eviction **off**.
-4. Verify a sending domain in Resend, then set `RESEND_API_KEY` and `EMAIL_FROM`.
-5. Set the remaining variables from [.env.example](.env.example) in Vercel, including
-   `WORKER_HEARTBEAT_TTL_SECONDS=420`.
-6. Deploy. The build runs `prisma migrate deploy`.
-7. **Schedule the poll.** Vercel Hobby only allows daily crons, so the five-minute poll is
-   called from outside. Any free scheduler that can send a header works. For example, on
-   [cron-job.org](https://cron-job.org) create a job:
-   - URL `https://<your-app>.vercel.app/api/cron/poll`, method GET, every 5 minutes
-   - Header `Authorization: Bearer <your CRON_SECRET>`
-   - The longest timeout it allows (a tick can take about four minutes)
+### 1. Fork this repository
 
-   On Vercel Pro you can instead add `{"path": "/api/cron/poll", "schedule": "*/5 * * * *"}`
-   to `crons` in `vercel.json` and skip the external scheduler.
+Click **Fork** at the top of this page. Vercel deploys from your fork.
+
+### 2. Composio: new project, connect Instagram
+
+1. Sign in to [Composio](https://composio.dev) and create a **new project** just for this
+   app. One Composio API key can reach every account connected in its project, so keep this
+   one separate.
+2. In that project, add the **Instagram** toolkit (Composio's managed auth is fine), then
+   connect your Instagram Business or Creator account.
+3. Copy two values: the project **API key** (project settings) and the **connected account
+   ID** of your Instagram connection (it starts with `ca_`). You paste both into the app in
+   step 7, not into Vercel. Prefer the API? [docs/composio.md](docs/composio.md) does the
+   same with two `curl` calls.
+
+### 3. Supabase: the database
+
+The app only needs Supabase's Postgres database, not its other features.
+
+1. At [supabase.com](https://supabase.com), create a project. Pick the East US (North
+   Virginia) region, closest to Vercel's default. Give the database a password of letters
+   and numbers only, so it can go into the connection strings as is, and keep it.
+2. Turn off the **Data API** (in the project's security options when you create it, or
+   later under Project Settings). The app talks to Postgres directly, and with the Data API
+   on, Supabase publishes the app's tables over its own web API.
+3. Click **Connect** and copy two connection strings, putting your password in place of
+   `[YOUR-PASSWORD]`:
+   - **Transaction pooler** (port `6543`): that is `DATABASE_URL`, for the app.
+   - **Session pooler** (port `5432`): that is `DIRECT_DATABASE_URL`. The build uses it to
+     create the tables. Use the session pooler, not "Direct connection": on the free plan the
+     direct address is IPv6 only, which Vercel cannot reach.
+
+### 4. Upstash: the queue
+
+1. At [upstash.com](https://upstash.com), create a Redis database in the same region.
+2. Make sure **Eviction** is off (it is off by default). With eviction on, Redis can drop
+   queued DMs without telling you.
+3. Copy the **TCP** connection string that starts with `rediss://`: that is `REDIS_URL`.
+
+### 5. Resend: the sign-in email
+
+At [resend.com](https://resend.com), create an API key: that is `RESEND_API_KEY`. Without
+your own domain, use `EMAIL_FROM=OpenReply <onboarding@resend.dev>`; Resend then delivers
+only to the email you signed up to Resend with, so use that email in `ALLOWED_EMAILS`.
+
+### 6. Vercel: import and deploy
+
+1. At [vercel.com](https://vercel.com), **Add New > Project**, and import your fork.
+2. Open **Environment Variables** and add every variable from [.env.example](.env.example).
+   You can paste the whole filled-in file into the first field. Generate the secrets in a
+   terminal:
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+   for `NEXTAUTH_SECRET`,
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+   for `ENCRYPTION_KEY` (64 characters), and
+
+   ```bash
+   openssl rand -hex 24
+   ```
+
+   for `CRON_SECRET`. Set `NEXTAUTH_URL` to `https://<your-project-name>.vercel.app`,
+   `ALLOWED_EMAILS` to your email and `WORKER_HEARTBEAT_TTL_SECONDS` to `420`.
+3. Click **Deploy**. The build runs `prisma migrate deploy`. When it finishes, open the app.
+   If Vercel gave it a different domain than you guessed, fix `NEXTAUTH_URL` and redeploy.
+
+### 7. Sign in and connect Instagram
+
+1. Open your app, enter your email and click the magic link Resend sends you.
+2. Go to **Settings**, paste the Composio API key and connected account ID from step 2, and
+   click **Check connection**. When it shows your Instagram username, click
+   **Connect @yourname**.
+
+### 8. cron-job.org: the five minute check
+
+Vercel's free plan runs its own scheduled jobs at most once a day, which is why
+`vercel.json` holds only two daily jobs. The comment check needs every five minutes, so a
+free outside scheduler calls it:
+
+1. At [cron-job.org](https://cron-job.org), create a cronjob.
+2. URL: `https://<your-app>/api/cron/poll`. Schedule: every 5 minutes.
+3. Under **Advanced**, add a header: `Authorization` with the value `Bearer <your
+   CRON_SECRET>`.
+4. Save and run a test. A good answer is `{"success":true,"data":{"started":true}}`. The
+   route answers at once and does the work right after, because cron-job.org gives up on a
+   request after 30 seconds; the results show in Activity, not in that answer. A `401` means
+   the header does not match `CRON_SECRET`.
+
+On Vercel Pro you can skip cron-job.org: add `{"path": "/api/cron/poll", "schedule":
+"*/5 * * * *"}` to the `crons` list in `vercel.json` and Vercel sends the secret itself.
+
+### 9. Your first campaign
+
+1. **Campaigns > New campaign**, and pick the post or reel.
+2. Add a keyword people would actually type, like `LINK`.
+3. Write the DM and add the button with your link. **Save paused**: nothing sends yet.
+4. Open the campaign and click **Activate**.
+5. From your second Instagram account, comment the keyword (your own comments are ignored on
+   purpose). Within five minutes the DM arrives (check Message Requests too). **Activity**
+   shows the send, or the reason it skipped.
+
+### Free plan limits
+
+Check each provider's pricing page; these figures were current in October 2026.
+
+- **Supabase Free** gives a 500 MB database that stays on, with no monthly compute-hour
+  cap, which is why this uses it instead of a database that sleeps when idle: a check every
+  5 minutes would keep one awake all month. Supabase pauses free projects after a week of
+  inactivity; if yours is ever paused, restore it from the Supabase dashboard.
+- **Upstash Free** allows 500,000 commands a month. A check with nothing to send uses about
+  30, so checks every 5 minutes use about 260,000 a month before any DMs.
+- **Vercel Hobby** functions may run up to 300 seconds; one check stops working after 240.
 
 ## Deploy option B: Docker on your own server
 
@@ -89,20 +192,19 @@ This runs Postgres, Redis, migrations, the web app on `127.0.0.1:3000`, the alwa
 worker, and a scheduler for the daily jobs. Put an HTTPS reverse proxy in front (Caddy,
 nginx, Traefik, or a Cloudflare tunnel) and set `NEXTAUTH_URL` to its public URL.
 
-## Connect Instagram
+## Connect Instagram from a terminal
 
-1. Sign in to your deployment once with an email listed in `ALLOWED_EMAILS`. This creates
-   your workspace.
-2. Get a Composio API key and an Instagram connected account (`ca_...`). Step by step:
-   [docs/composio.md](docs/composio.md).
-3. Put them in a private file outside the repo, for example `~/composio-ig.json`
-   (`chmod 600`):
+Settings (step 7 above) is the simple way, and works on Docker too. If you prefer a
+terminal, `scripts/connect-composio.ts` does the same and pins the exact account:
+
+1. Put the Composio values in a private file outside the repo, for example
+   `~/composio-ig.json` (`chmod 600`):
 
    ```json
    { "apiKey": "<composio api key>", "connectedAccountId": "ca_..." }
    ```
 
-4. In a local clone, put your deployment's `DATABASE_URL` and `ENCRYPTION_KEY` in `.env`.
+2. In a local clone, put your deployment's `DATABASE_URL` and `ENCRYPTION_KEY` in `.env`.
    Read which Instagram account the connection points at. This saves nothing:
 
    ```bash
@@ -110,23 +212,19 @@ nginx, Traefik, or a Cloudflare tunnel) and set `NEXTAUTH_URL` to its public URL
    npx tsx scripts/connect-composio.ts --dry < ~/composio-ig.json
    ```
 
-5. Save it, pinned to exactly that account:
+3. Save it, pinned to exactly that account:
 
    ```bash
    EXPECTED_IG_USERNAME=<username from --dry> EXPECTED_IG_USER_ID=<user_id from --dry> OWNER_EMAIL=<your sign-in email> npx tsx scripts/connect-composio.ts < ~/composio-ig.json
    ```
 
-   The credential is encrypted with `ENCRYPTION_KEY` before it is stored. On Docker, the
-   simplest way is to run both commands inside the web container:
+   On Docker, run both inside the web container:
    `docker compose -f deploy/compose.yml exec -T web npx tsx scripts/connect-composio.ts --dry < ~/composio-ig.json`
-
-The pin matters: a Composio API key can reach every connection in its project, so the
-script refuses to save anything but the account you named.
 
 ## Use it
 
-Campaigns → New → pick a post (or "next reel") → keywords → message and link → Activate.
-Campaigns are saved paused until you activate them.
+Campaigns → New campaign → pick a post (or "next reel") → keywords → message and link →
+Save paused → Activate.
 
 Test from a **different** Instagram account (your own comments are ignored on purpose):
 comment the keyword, wait up to five minutes, then check Activity. It lists every send and
@@ -147,6 +245,7 @@ npm test && npm run lint && npm run typecheck
 
 ## Credits and license
 
-Built on [diwenne/openreply](https://github.com/diwenne/openreply) by Diwen Huang, MIT.
+Built on [diwenne/openreply](https://github.com/diwenne/openreply) by Diwen Huang and Anish
+Raj, MIT.
 This fork is MIT too; see [LICENSE](LICENSE), and [UPSTREAM.md](UPSTREAM.md) for what
 changed. Not affiliated with Meta, Instagram, Composio or ManyChat.

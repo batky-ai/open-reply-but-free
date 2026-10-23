@@ -16,9 +16,9 @@ describe("Composio Instagram transport", () => {
     expect(fetchMock).toHaveBeenCalledWith(endpoint, { method: "GET" });
   });
   it("pins account and host, strips tokens, and unwraps Graph data", async () => {
-    respond({ username: "a.bbe" });
+    respond({ username: "creator" });
     const result = await graphFetch(credentials, endpoint + "?access_token=leak");
-    expect(await result.json()).toEqual({ username: "a.bbe" });
+    expect(await result.json()).toEqual({ username: "creator" });
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe("https://backend.composio.dev/api/v3.1/tools/execute/proxy");
     expect(JSON.parse(options.body)).toEqual({ endpoint, method: "GET", connected_account_id: "ca_test" });
@@ -27,6 +27,13 @@ describe("Composio Instagram transport", () => {
     expect(db.create).not.toHaveBeenCalled();
     await expect(graphFetch(credentials, "https://attacker.test")).rejects.toThrow("graph.instagram.com");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("sends a project API key as x-api-key when there is no org or project id", async () => {
+    respond({ username: "creator" });
+    await graphFetch({ apiKey: credentials.apiKey, connectedAccountId: "ca_test" }, endpoint);
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options.headers["x-api-key"]).toBe(credentials.apiKey);
+    expect(options.headers["x-user-api-key"]).toBeUndefined();
   });
   it("persists success and replays the receipt without a second send", async () => {
     respond({ message_id: "mid" });

@@ -9,10 +9,13 @@ License: MIT, retained in LICENSE. Upstream `.github` workflows are not included
 - **Composio provider** (`COMPOSIO`): `lib/composio/transport.ts` proxies the same
   Instagram Graph requests through Composio, with a durable per-comment delivery claim
   (`ComposioDelivery` table) so a comment can never be answered twice.
-  `scripts/connect-composio.ts` stores a pinned, encrypted connection.
+  Settings connects it in two steps (`app/api/composio/connect/route.ts`,
+  `components/composio-connect-form.tsx`), and `scripts/connect-composio.ts` does the same
+  from a terminal; both store it encrypted through `lib/composio/link-account.ts`.
   `lib/composio/campaigns.ts` blocks features that need Meta webhooks.
 - **Serverless worker**: `lib/ops/cron-poll.ts` and `app/api/cron/poll/route.ts` run one
-  worker tick per call, so the app runs on Vercel with no always-on process.
+  worker tick per call, so the app runs on Vercel with no always-on process. The route
+  answers at once and runs the tick in `after()`, so a scheduler with a 30 s limit works.
   `WORKER_HEARTBEAT_TTL_SECONDS` makes `/api/health` fit that cadence.
 - **Docker stack**: `Dockerfile`, `deploy/compose.yml`, and `scripts/cron.sh` (a scheduler
   for the `/api/cron` routes off Vercel).
